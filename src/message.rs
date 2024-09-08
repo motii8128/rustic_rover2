@@ -1,6 +1,7 @@
 use super::game_controller::GamePad;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Message {
-    GamePad(GamePad)
+    GamePad(GamePad),
+    GetSerial
 }
