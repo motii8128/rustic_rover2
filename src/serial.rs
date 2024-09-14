@@ -4,18 +4,17 @@ use super::thread::Node;
 
 pub struct SerialManager
 {
-    serial_num : usize,
     available_ports : Vec<String>,
     opend_ports : Vec<String>,
-    wheel_node : Node<Packet>,
-    machine_node : Node<Packet>,
+    pub wheel_node : Node<Packet>,
+    pub machine_node : Node<Packet>,
     pub wheel_is_spawned : bool
 }
 
 impl SerialManager {
     pub fn new()->SerialManager
     {
-        SerialManager {serial_num : 0,  available_ports: Vec::<String>::new() , opend_ports : Vec::<String>::new(), wheel_node : Node::new(), machine_node : Node::new(), wheel_is_spawned : false}
+        SerialManager {available_ports: Vec::<String>::new() , opend_ports : Vec::<String>::new(), wheel_node : Node::new(), machine_node : Node::new(), wheel_is_spawned : false}
     }
 
     pub fn scan_available(&mut self)
@@ -28,6 +27,7 @@ impl SerialManager {
                     {
                         if !port_info.port_name.contains("/dev/ttyS")
                         {
+                            println!("{}", port_info.port_name.clone());
                             self.available_ports.push(port_info.port_name);
                         }
                     }
@@ -40,7 +40,7 @@ impl SerialManager {
     }
     pub fn check_ready_to_serial(&self)->bool
     {
-        self.serial_num != 0
+        self.available_ports.len() != 0
     }
 
     pub fn spawn_wheel(&mut self)
@@ -56,11 +56,19 @@ impl SerialManager {
 
                     let mut send = Packet::new();
                     let mut history = Packet::new();
+                    let mut vec = Packet::new();
 
                     loop {
-                        let target = new_node.subscriber.recv().unwrap();
+                        let target = match new_node.subscriber.recv() {
+                            Ok(p)=>{
+                                println!("{:?}", p);
+                                p
+                            }
+                            Err(_e)=>{
+                                Packet::new()
+                            }
+                        };
                         
-                        let mut vec = Packet::new();
                         vec.x = target.x+100 - history.x;
                         vec.y = target.y+100 - history.y;
                         vec.rotation = target.rotation+100 - history.rotation;
@@ -90,10 +98,14 @@ impl SerialManager {
                             send.rotation -= 1;
                         }
 
-                        let send_text = format!("w{},{},{}e", send.x, send.y, send.rotation);
+                        let send_text = format!("{},{},{}e", 
+                            (send.x - 100) as f32 / 100.0,
+                            (send.y - 100) as f32 / 100.0,
+                            (send.rotation - 100) as f32 / 100.0);
 
                         match port.write(send_text.as_bytes()) {
                             Ok(_size)=>{
+                                println!("Write:{}", send_text);
                                 let _ = port.clear(serialport::ClearBuffer::Input);
                             }
                             Err(_e)=>{
@@ -118,7 +130,7 @@ impl SerialManager {
             Some(path)=>{
                 let selected = path.clone();
                 let new_node = Node::<Packet>::new();
-                self.machine_node.publisher = new_node.publisher;
+                self.machine_node.publisher = new_node.publisher.clone();
 
                 std::thread::spawn(move ||{
                     let mut port = serialport::new(selected, 115200).timeout(std::time::Duration::from_millis(100)).open().unwrap();
@@ -126,7 +138,7 @@ impl SerialManager {
                     loop {
                         let target = new_node.subscriber.recv().unwrap();
 
-                        let send_text = format!("m{},{},{}e", target.m1, target.m2, target.m3);
+                        let send_text = format!("{},{},{}e", target.m1+100, target.m2+100, target.m3+100);
 
                         match port.write(send_text.as_bytes()) {
                             Ok(_size)=>{
@@ -145,11 +157,6 @@ impl SerialManager {
         }
         self.opend_ports.push(self.available_ports[0].clone());
         self.available_ports.remove(0);
-    }
-    pub fn exec_publisher(&self, target:Packet)
-    {
-        let _ = self.wheel_node.publisher.send(target);
-        let _ = self.machine_node.publisher.send(target);
     }
 }
 

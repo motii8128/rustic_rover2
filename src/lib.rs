@@ -72,19 +72,6 @@ impl iced::Application for RusticRover2 {
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
             Message::GamePad(get)=>{
-                if self.serial_manager.check_ready_to_serial()
-                {
-                    if !self.serial_manager.wheel_is_spawned
-                    {
-                        self.serial_manager.spawn_wheel();
-                        self.wheel_ready = true;
-                    }
-                    else {
-                        self.serial_manager.spawn_machine();
-                        self.machine_ready = true;
-                    }
-                }
-
                 self.x = (get.joy_stick.left_x * 100.0) as i32;
                 self.y = (get.joy_stick.left_y * 100.0) as i32;
                 self.rotation = (get.joy_stick.right_x * 100.0) as i32;
@@ -123,11 +110,27 @@ impl iced::Application for RusticRover2 {
                 new_packet.m2 = self.m2;
                 new_packet.m3 = self.m3;
 
-                self.serial_manager.exec_publisher(new_packet);
+                if self.wheel_ready
+                {
+                    let _ = self.serial_manager.wheel_node.publisher.send(new_packet);
+                }
                 iced::Command::none()
             }
             Message::GetSerial=>{
                 self.serial_manager.scan_available();
+
+                if self.serial_manager.check_ready_to_serial()
+                {
+                    if !self.serial_manager.wheel_is_spawned
+                    {
+                        self.serial_manager.spawn_wheel();
+                        self.wheel_ready = true;
+                    }
+                    else {
+                        self.serial_manager.spawn_machine();
+                        self.machine_ready = true;
+                    }
+                }
 
                 iced::Command::none()
             }

@@ -195,6 +195,14 @@ impl GamePad {
         {
             output.battery = lvl   
         }
+        else if let gilrs::PowerInfo::Charging(lvl) = input.power_info()
+        {
+            output.battery = lvl   
+        }
+        else if let gilrs::PowerInfo::Wired = input.power_info()
+        {
+            output.battery = 100;
+        }
 
 
         output
