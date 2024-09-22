@@ -2,24 +2,19 @@ mod game_controller;
 mod thread;
 mod message;
 mod serial;
+mod view_utils;
+mod packet_creator;
 
 use iced;
 use message::Message;
+use packet_creator::PacketManager;
 use serial::SerialManager;
 
 pub struct RusticRover2
 {
-    gamepad_manager: game_controller::GamePadManager,
-    gamepad_battery : u8,
-    x : i32,
-    y : i32,
-    rotation : i32,
-    m1 : i32,
-    m2 : i32,
-    m3 : i32,
-    serial_manager : serial::SerialManager,
-    wheel_ready : bool,
-    machine_ready : bool
+    gamepad_manager : game_controller::ControllerManager,
+    packet_manager : packet_creator::PacketManager,
+    serial_manager : SerialManager
 }
 
 impl iced::Application for RusticRover2 {
@@ -29,22 +24,22 @@ impl iced::Application for RusticRover2 {
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
-        let mut gamepad_manager = game_controller::GamePadManager::new();
-        gamepad_manager.spawn_gamepad_driver();
+        
+        let mut gm = game_controller::ControllerManager::new();
+        gm.scan_device();
+
+        gm.spawn_driver(game_controller::interface::ControllerConnectionType::SERIAL);
+        gm.spawn_driver2(game_controller::interface::ControllerConnectionType::SERIAL);
+
+        let mut pm = PacketManager::new();
+        pm.search_data_files();
+        
 
         (
             Self{
-                gamepad_manager : gamepad_manager,
-                gamepad_battery : 0,
-                x : 0,
-                y : 0,
-                rotation : 0,
-                m1 : 0,
-                m2 : 0,
-                m3 : 0,
-                serial_manager : SerialManager::new(),
-                wheel_ready : false,
-                machine_ready : false
+                gamepad_manager : gm,
+                packet_manager : pm,
+                serial_manager : SerialManager::new()
             },
             iced::Command::none()
         )
@@ -61,124 +56,79 @@ impl iced::Application for RusticRover2 {
     fn subscription(&self) -> iced::Subscription<Self::Message> {
         iced::subscription::unfold(
             "gamepad_subscription", 
-            self.gamepad_manager.node.get_subscriber(), 
+            self.gamepad_manager.controller_1.get_subscriber(), 
             move |mut subscriber| async move{
                 let get = subscriber.as_mut().unwrap().recv().await.unwrap();
 
-                (Message::GamePad(get), subscriber)
+                (Message::MainLoop(get), subscriber)
             })
     }
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
-            Message::GamePad(get)=>{
-                self.x = (get.joy_stick.left_x * 100.0) as i32;
-                self.y = (get.joy_stick.left_y * 100.0) as i32;
-                self.rotation = (get.joy_stick.right_x * 100.0) as i32;
-                if get.buttons.l1
-                {
-                    self.m1 = 100;
-                }
-                else if get.buttons.l2 == 1.0
-                {
-                    self.m1 = -100;
-                }
-                else {
-                    self.m1 = 0;
-                }
+            Message::MainLoop(check)=>{
+                self.packet_manager.creator_1.load_from_yaml(self.packet_manager.get_selected_file1());
+                self.packet_manager.creator_2.load_from_yaml(self.packet_manager.get_selected_file2());
 
-                if get.buttons.r1
-                {
-                    self.m2 = 100;
-                }
-                else if get.buttons.r2 == 1.0
-                {
-                    self.m2 = -100;
-                }
-                else {
-                    self.m2 = 0;
-                }
+                self.gamepad_manager.get_value_1 = check;
+                self.gamepad_manager.get_value_2 = self.gamepad_manager.controller_2.subscribe();
 
-                self.m3 = (get.dpad.y * 100.0) as i32;
-                self.gamepad_battery = get.battery;
+                self.packet_manager.packet1 = self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1);
+                self.packet_manager.packet2 = self.packet_manager.creator_2.create(self.gamepad_manager.get_value_2);
 
-                let mut new_packet = serial::Packet::new();
-                new_packet.x = self.x;
-                new_packet.y = self.y;
-                new_packet.rotation = self.rotation;
-                new_packet.m1 = self.m1;
-                new_packet.m2 = self.m2;
-                new_packet.m3 = self.m3;
-
-                if self.wheel_ready
-                {
-                    let _ = self.serial_manager.wheel_node.publisher.send(new_packet);
-                }
-                iced::Command::none()
+                self.serial_manager.manage1(self.packet_manager.packet1);
+                self.serial_manager.manage2(self.packet_manager.packet2);
             }
             Message::GetSerial=>{
                 self.serial_manager.scan_available();
-
-                if self.serial_manager.check_ready_to_serial()
-                {
-                    if !self.serial_manager.wheel_is_spawned
-                    {
-                        self.serial_manager.spawn_wheel();
-                        self.wheel_ready = true;
-                    }
-                    else {
-                        self.serial_manager.spawn_machine();
-                        self.machine_ready = true;
-                    }
-                }
-
-                iced::Command::none()
+            }
+            Message::FileSelect1(name)=>{
+                self.packet_manager.yaml_list1.selected = Some(name)
+            }
+            Message::FileSelect2(name)=>{
+                self.packet_manager.yaml_list2.selected = Some(name)
             }
         }
+
+        iced::Command::none()
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message, Self::Theme, iced::Renderer> {
-        let battery_title = iced::widget::text("Controller Battery").size(50);
-        let batt = iced::widget::ProgressBar::new(0.0..=100.0, self.gamepad_battery as f32).height(50).width(700);
-        let battery = iced::widget::text(format!("{}%", self.gamepad_battery)).size(50);
-        let battery_row = iced::widget::row![battery, batt].align_items(iced::Alignment::Center);
-        let battery_info = iced::widget::column![battery_title, battery_row].align_items(iced::Alignment::Center);
 
-        let command_string = format!("x:{}\ny:{}\nrotation:{}\nm1:{}\nm2:{}\nm3:{}",
-            self.x,
-            self.y,
-            self.rotation,
-            self.m1,
-            self.m2,
-            self.m3);
+        let title_image = view_utils::path_to_image("./rr2.png", 300);
+        let row = self.packet_manager.packet_view();
+        let scan_button = iced::widget::button("Scan available serialport").width(400).height(50).on_press(Message::GetSerial);
 
-        let command_text = iced::widget::text(command_string).size(50);
-
-        let scan_button: iced::widget::Button<'_, Message, _, _> = iced::widget::button(iced::widget::text("Scan Serial").size(50)).on_press(Message::GetSerial).height(250).width(250);
-
-        if self.wheel_ready
+        let serial1 = if self.serial_manager.node1_state
         {
-            let controller_clm = iced::widget::column![battery_info, command_text, scan_button];
-            let wi = path_to_image("./assets/wheel_ok.png", 500);
-            
-            iced::widget::row![controller_clm, wi].spacing(30).align_items(iced::Alignment::Start).into()
+            let text = iced::widget::text(self.serial_manager.node1_type.clone()).size(30);
+            let image = view_utils::path_to_image("./assets/micro_controller.png", 250);
+
+            iced::widget::column![image, text]
         }
-        else if self.wheel_ready && self.machine_ready
+        else
         {
-            let controller_clm = iced::widget::column![battery_info, command_text, scan_button];
-            let wi = path_to_image("./assets/wheel_ok.png", 500);
-            let mi = path_to_image("./assets/machine_ok.png", 500);
-            let image_clm = iced::widget::column![wi, mi].spacing(10);
-            
-            iced::widget::row![controller_clm, image_clm].spacing(30).align_items(iced::Alignment::Start).into()
+            let text = iced::widget::text("Waiting Connection ...").size(30);
+
+            iced::widget::column![text]
+        };
+
+        let serial2 = if self.serial_manager.node2_state
+        {
+            let text = iced::widget::text(self.serial_manager.node2_type.clone()).size(30);
+            let image = view_utils::path_to_image("./assets/micro_controller.png", 250);
+
+            iced::widget::column![image, text]
         }
-        else {
-            iced::widget::column![battery_info, command_text, scan_button].into()
-        }        
+        else
+        {
+            let text = iced::widget::text("Waiting Connection ...").size(30);
+
+            iced::widget::column![text]
+        };
+
+        let serial_row = iced::widget::row![serial1, serial2].spacing(60);
+
+        iced::widget::column![title_image, row, scan_button, serial_row].spacing(30).align_items(iced::Alignment::Center).into()
     }
-}
-
-pub fn path_to_image(path:&str, size:u16)->iced::widget::Image<iced::widget::image::Handle>
-{
-    iced::widget::image::Image::new(iced::widget::image::Handle::from_path(path)).width(size).height(size)
 }

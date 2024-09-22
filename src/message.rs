@@ -1,7 +1,9 @@
-use super::game_controller::GamePad;
+use super::game_controller::interface::Controller;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Message {
-    GamePad(GamePad),
-    GetSerial
+    MainLoop(Controller),
+    GetSerial,
+    FileSelect1(String),
+    FileSelect2(String)
 }

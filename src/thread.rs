@@ -2,10 +2,10 @@ use std::cell::RefCell;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use std::sync::mpsc::{channel, Sender, Receiver};
 
-type Publisher<T> = Sender<T>;
-type Subscriber<T> = Receiver<T>;
-type AsyncPublisher<T> = UnboundedSender<T>;
-type AsyncSubscriber<T> = UnboundedReceiver<T>;
+pub type Publisher<T> = Sender<T>;
+pub type Subscriber<T> = Receiver<T>;
+pub type AsyncPublisher<T> = UnboundedSender<T>;
+pub type AsyncSubscriber<T> = UnboundedReceiver<T>;
 
 pub struct Node<T>
 {
@@ -19,6 +19,14 @@ impl<T> Node<T> {
         let (t, r) = channel::<T>();
 
         Node { publisher: t, subscriber: r }
+    }
+    pub fn get_publisher(&self)->Publisher<T>
+    {
+        self.publisher.clone()
+    }
+    pub fn subscribe(&self)->T
+    {
+        self.subscriber.recv().unwrap()
     }
 }
 
