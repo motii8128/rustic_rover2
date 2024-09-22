@@ -1,0 +1,29 @@
+/**:
+  id: 3
+  second: 2
+  x:
+    plus: "Left_Stick_Y"
+    minus: "Left_Stick_Y"
+    rate: 100
+    smooth : true
+  y:
+    plus: "Right_Stick_Y"
+    minus: "Right_Stick_Y"
+    rate: 100
+    smooth : true
+  rotation:
+    plus: "Up_Key"
+    minus: "Down_Key"
+    rate: 100
+    smooth : false
+  m1:
+    plus: "R1_Button"
+    minus: "R2_Button"
+    rate: 100
+    smooth : false
+  m2:
+    plus: "L1_Button"
+    minus: "L2_Button"
+    rate: 100
+    smooth : false
+  
