@@ -67,26 +67,22 @@ impl iced::Application for RusticRover2 {
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
             Message::MainLoop(check)=>{
-                self.packet_manager.creator_1.load_from_yaml(self.packet_manager.get_selected_file1());
-                self.packet_manager.creator_2.load_from_yaml(self.packet_manager.get_selected_file2());
-
                 self.gamepad_manager.get_value_1 = check;
                 self.gamepad_manager.get_value_2 = self.gamepad_manager.controller_2.subscribe();
 
-                self.packet_manager.packet1 = self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1);
-                self.packet_manager.packet2 = self.packet_manager.creator_2.create(self.gamepad_manager.get_value_2);
-
-                self.serial_manager.manage1(self.packet_manager.packet1);
-                self.serial_manager.manage2(self.packet_manager.packet2);
+                self.serial_manager.manage1(self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1));
+                self.serial_manager.manage2(self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1));
             }
             Message::GetSerial=>{
                 self.serial_manager.scan_available();
             }
             Message::FileSelect1(name)=>{
-                self.packet_manager.yaml_list1.selected = Some(name)
+                self.packet_manager.yaml_list1.selected = Some(name);
+                self.packet_manager.creator_1.load_from_yaml(self.packet_manager.get_selected_file1());
             }
             Message::FileSelect2(name)=>{
-                self.packet_manager.yaml_list2.selected = Some(name)
+                self.packet_manager.yaml_list2.selected = Some(name);
+                self.packet_manager.creator_2.load_from_yaml(self.packet_manager.get_selected_file2());
             }
         }
 

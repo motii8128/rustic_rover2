@@ -167,10 +167,10 @@ impl SerialManager {
 
                             let send_str = format!("{},{},{},{},{}e",
                                 recv_packet.id,
-                                send_.x,
-                                send_.y,
-                                send_.rotation,
-                                send_.m1);
+                                send_.x / 10 + 10,
+                                send_.y / 10 + 10,
+                                send_.rotation / 10 + 10,
+                                send_.m1 / 10 + 10);
                             
                             match port.write(send_str.as_bytes()) {
                                 Ok(_size)=>{
@@ -336,10 +336,10 @@ impl SerialManager {
 
                             let send_str = format!("{},{},{},{},{}e",
                                 recv_packet.id,
-                                send_.x,
-                                send_.y,
-                                send_.rotation,
-                                send_.m1);
+                                send_.x / 10 + 10,
+                                send_.y / 10 + 10,
+                                send_.rotation / 10 + 10,
+                                send_.m1 / 10 + 10);
                             
                             match port.write(send_str.as_bytes()) {
                                 Ok(_size)=>{
@@ -365,11 +365,11 @@ impl SerialManager {
                         serialport::SerialPortType::UsbPort(usb)=>{
                             if usb.manufacturer == None
                             {
-                                self.node1_type = String::from("ESP-WROOM-32");
+                                self.node2_type = String::from("ESP-WROOM-32");
                             }
                             else {
                                 println!("{}",usb.manufacturer.clone().unwrap());
-                                self.node1_type = String::from("Arduino")
+                                self.node2_type = String::from("Arduino")
                             }
                         }
                         _=>{
