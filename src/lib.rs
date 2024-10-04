@@ -70,8 +70,11 @@ impl iced::Application for RusticRover2 {
                 self.gamepad_manager.get_value_1 = check;
                 self.gamepad_manager.get_value_2 = self.gamepad_manager.controller_2.subscribe();
 
-                self.serial_manager.manage1(self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1));
-                self.serial_manager.manage2(self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1));
+                self.packet_manager.creator_1.create(self.gamepad_manager.get_value_1);
+                self.packet_manager.creator_2.create(self.gamepad_manager.get_value_2);
+
+                self.serial_manager.manage1(self.packet_manager.creator_1.new_packet);
+                self.serial_manager.manage2(self.packet_manager.creator_2.new_packet);
             }
             Message::GetSerial=>{
                 self.serial_manager.scan_available();

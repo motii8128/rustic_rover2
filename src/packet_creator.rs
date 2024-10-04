@@ -11,15 +11,13 @@ pub struct PacketManager
     pub creator_2 : PacketCreator,
     pub yaml_list1 : ComboBox<String>,
     pub yaml_list2 : ComboBox<String>,
-    pub packet1 : Packet,
-    pub packet2 : Packet
 }
 impl PacketManager {
     pub fn new()->PacketManager
     {
         let cb = ComboBox::new(Vec::<String>::new());
         let cb2 = ComboBox::new(Vec::<String>::new());
-        PacketManager { creator_1: PacketCreator::new(), creator_2: PacketCreator::new() , yaml_list1 : cb, yaml_list2 : cb2, packet1 : Packet::new(), packet2 : Packet::new()}
+        PacketManager { creator_1: PacketCreator::new(), creator_2: PacketCreator::new() , yaml_list1 : cb, yaml_list2 : cb2}
     }
     pub fn search_data_files(&mut self)
     {
@@ -71,12 +69,12 @@ impl PacketManager {
             Message::FileSelect1);
         let p1_info_str = format!(
             "ID: {}\n1.{}&{} : {}\n2.{}&{} : {}\n3.{}&{} : {}\n4.{}&{} : {}\n5.{}&{} : {}", 
-            self.packet1.id, 
-            self.creator_1.value_1_assign.plus_assign, self.creator_1.value_1_assign.minus_assign, self.packet1.x,
-            self.creator_1.value_2_assign.plus_assign, self.creator_1.value_2_assign.minus_assign, self.packet1.y,
-            self.creator_1.value_3_assign.plus_assign, self.creator_1.value_3_assign.minus_assign, self.packet1.rotation,
-            self.creator_1.value_4_assign.plus_assign, self.creator_1.value_4_assign.minus_assign, self.packet1.m1,
-            self.creator_1.value_5_assign.plus_assign, self.creator_1.value_5_assign.minus_assign, self.packet1.m2);
+            self.creator_1.new_packet.id, 
+            self.creator_1.value_1_assign.plus_assign, self.creator_1.value_1_assign.minus_assign, self.creator_1.new_packet.x,
+            self.creator_1.value_2_assign.plus_assign, self.creator_1.value_2_assign.minus_assign, self.creator_1.new_packet.y,
+            self.creator_1.value_3_assign.plus_assign, self.creator_1.value_3_assign.minus_assign, self.creator_1.new_packet.rotation,
+            self.creator_1.value_4_assign.plus_assign, self.creator_1.value_4_assign.minus_assign, self.creator_1.new_packet.m1,
+            self.creator_1.value_5_assign.plus_assign, self.creator_1.value_5_assign.minus_assign, self.creator_1.new_packet.m2);
 
         let p1_info_t = iced::widget::text(p1_info_str).size(30);
 
@@ -89,12 +87,12 @@ impl PacketManager {
             Message::FileSelect2);
         let p2_info_str = format!(
             "ID: {}\n1.{}&{} : {}\n2.{}&{} : {}\n3.{}&{} : {}\n4.{}&{} : {}\n5.{}&{} : {}", 
-            self.packet2.id, 
-            self.creator_2.value_1_assign.plus_assign, self.creator_2.value_1_assign.minus_assign,self.packet2.x,
-            self.creator_2.value_2_assign.plus_assign, self.creator_2.value_2_assign.minus_assign,self.packet2.y,
-            self.creator_2.value_3_assign.plus_assign, self.creator_2.value_3_assign.minus_assign,self.packet2.rotation,
-            self.creator_2.value_4_assign.plus_assign, self.creator_2.value_4_assign.minus_assign,self.packet2.m1,
-            self.creator_2.value_5_assign.plus_assign, self.creator_2.value_5_assign.minus_assign,self.packet2.m2);
+            self.creator_2.new_packet.id,  
+            self.creator_2.value_1_assign.plus_assign, self.creator_2.value_1_assign.minus_assign,self.creator_2.new_packet.x,
+            self.creator_2.value_2_assign.plus_assign, self.creator_2.value_2_assign.minus_assign,self.creator_2.new_packet.y,
+            self.creator_2.value_3_assign.plus_assign, self.creator_2.value_3_assign.minus_assign,self.creator_2.new_packet.rotation,
+            self.creator_2.value_4_assign.plus_assign, self.creator_2.value_4_assign.minus_assign,self.creator_2.new_packet.m1,
+            self.creator_2.value_5_assign.plus_assign, self.creator_2.value_5_assign.minus_assign,self.creator_2.new_packet.m2,);
 
         let p2_info_t = iced::widget::text(p2_info_str).size(30);
 
@@ -123,6 +121,7 @@ pub struct PacketCreator
     pub value_3_smooth : bool,
     pub value_4_smooth : bool,
     pub value_5_smooth : bool,
+    pub new_packet : Packet
 }
 impl PacketCreator {
     pub fn new()->PacketCreator
@@ -144,7 +143,8 @@ impl PacketCreator {
             value_2_smooth : true,
             value_3_smooth : false,
             value_4_smooth : false,
-            value_5_smooth : false
+            value_5_smooth : false,
+            new_packet : Packet::new()
         }
     }
     pub fn load_from_yaml(&mut self, f_name_:String)
@@ -200,32 +200,29 @@ impl PacketCreator {
             }
         }
     }
-    pub fn create(&self, input : Controller)->Packet
+    pub fn create(&mut self, input : Controller)
     {
-        let mut new_packet = Packet::new();
+        self.new_packet = Packet::new();
 
-        new_packet.x = (assign_to_controller(self.value_1_assign, input) * self.value_1_rate as f32) as i32;
-        new_packet.y = (assign_to_controller(self.value_2_assign, input) * self.value_2_rate as f32) as i32;
-        new_packet.rotation = (assign_to_controller(self.value_3_assign, input) * self.value_3_rate as f32) as i32;
-        new_packet.m1 = (assign_to_controller(self.value_4_assign, input) * self.value_4_rate as f32) as i32;
-        new_packet.m2 = (assign_to_controller(self.value_5_assign, input) * self.value_5_rate as f32) as i32;
+        self.new_packet.x = (assign_to_controller(self.value_1_assign, input) * self.value_1_rate as f32) as i32;
+        self.new_packet.y = (assign_to_controller(self.value_2_assign, input) * self.value_2_rate as f32) as i32;
+        self.new_packet.rotation = (assign_to_controller(self.value_3_assign, input) * self.value_3_rate as f32) as i32;
+        self.new_packet.m1 = (assign_to_controller(self.value_4_assign, input) * self.value_4_rate as f32) as i32;
+        self.new_packet.m2 = (assign_to_controller(self.value_5_assign, input) * self.value_5_rate as f32) as i32;
 
-        new_packet.value_1_smooth = self.value_1_smooth;
-        new_packet.value_2_smooth = self.value_2_smooth;
-        new_packet.value_3_smooth = self.value_3_smooth;
-        new_packet.value_4_smooth = self.value_4_smooth;
-        new_packet.value_5_smooth = self.value_5_smooth;
+        self.new_packet.value_1_smooth = self.value_1_smooth;
+        self.new_packet.value_2_smooth = self.value_2_smooth;
+        self.new_packet.value_3_smooth = self.value_3_smooth;
+        self.new_packet.value_4_smooth = self.value_4_smooth;
+        self.new_packet.value_5_smooth = self.value_5_smooth;
 
         if !input.btns.circle
         {
-            new_packet.id = self.id_1
+            self.new_packet.id = self.id_1
         }
         else {
-            new_packet.id = self.id_2
+            self.new_packet.id = self.id_2
         }
-
-
-        new_packet
     }
 }
 
